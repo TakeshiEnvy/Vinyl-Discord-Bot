@@ -22,6 +22,10 @@ for i in range(len(cogs)):
     cogs[i].setup(bot)
 
 #get token
+<<<<<<< HEAD
 with open("token.txt") as file:
     TOKEN = file.read()
 bot.run(TOKEN)
+=======
+bot.run()
+>>>>>>> d1c4cd05ca17f6aeba0d0b9f5cb9b9449514b1e8
