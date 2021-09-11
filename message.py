@@ -21,13 +21,11 @@ class message(commands.Cog):
         quote = json_data['insult']
         return quote
 
-    #send inpired quote
     @commands.command(name='inspire', help='Send inpired quote')
     async def inspire(self, ctx):
         quote = self.zenquotes()
         await ctx.send(quote)
     
-    #send insult
     @commands.command(name='insult', help='Send insult')
     async def insult(self, ctx):
         quote = self.evilinsult()
