@@ -64,7 +64,6 @@ class music(commands.Cog):
             # an error happened sending the message
             pass
     
-    #play music from youtube
     @commands.command(name='play', help='Play audio drom Youtube', aliases=['p'])
     async def play(self, ctx, *items):
 
@@ -86,7 +85,7 @@ class music(commands.Cog):
                 await ctx.send('❌ **- You need to get in the same voice chat as me**')
                 return
 
-        #Download Youtube video as audio then stream
+        #Get video link from Youtube then stream
         item = " ".join(items)
         await ctx.send(f"🔎 **Searching** `{item}`")
         info = self.yt_search(item)

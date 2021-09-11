@@ -16,11 +16,12 @@ async def on_ready():
 @bot.command(name='restart', help="Restart the bot's script", aliases=['reboot'])
 async def restart(ctx):
     await ctx.send('🔄 **Restarting bot...**')
-    print('Restarting bot...')
     os.execv(sys.executable,['python'] + sys.argv)
 
 for i in range(len(cogs)):
     cogs[i].setup(bot)
 
 #get token
-bot.run()
+with open("token.txt") as file:
+    TOKEN = file.read()
+bot.run(TOKEN)
