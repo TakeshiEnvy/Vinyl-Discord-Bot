@@ -1,4 +1,5 @@
 import discord
+from discord import message
 from discord.ext import commands
 from discord.ext.commands import context
 from discord.player import FFmpegPCMAudio
@@ -22,19 +23,47 @@ class music(commands.Cog):
 
         self.music_queue = []
         self.voice_channel = ""
+        self.message_channel = ""
         self.current_song = ""
-        self.previous_song = ""
-        self.numbering = 0
 
     #search youtube for item
     def yt_search(self, query):
         with YoutubeDL(YDL_OPTIONS) as ydl:
             try:
                 info = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
-                self.numbering += 1
             except Exception:
                 return False
-            return {'source': info['formats'][0]['url'], 'title': info['title'], 'number': self.numbering, 'channel': info['channel'], 'duration': info['duration']}
+            
+            return {'source': info['formats'][0]['url'], 'title': info['title'], 'channel': info['channel'], 'duration': info['duration'], 'web': info['webpage_url'], 'thumbnail': info['thumbnail']}
+    
+    #calculate audio duration
+    def time_format(self, duration):
+            m, s = divmod(duration, 60)
+            h, m = divmod(m, 60)
+
+            if s < 10:
+                second = f"0{s}"
+            else:
+                second = s
+
+            if h != 0:
+                if  m < 10:
+                    minute = f"0{m}"
+                else:
+                    minute =m
+                return f"{h}:{minute}:{second}"
+
+            else:
+                return f"{m}:{second}"
+
+    async def current_song_info(self, ctx, info):
+        embedVar = discord.Embed(title="🎵  **Playing:**", description=f"**[{info['title']}]({info['web']})**", color=0xff0000)
+        embedVar.add_field(name="Channel", value=info['channel'], inline=True)
+        embedVar.add_field(name="Duration", value=self.time_format(info['duration']), inline=True)
+        embedVar.add_field(name="Songs in queue", value=len(self.music_queue), inline=True)
+        embedVar.set_thumbnail(url= info['thumbnail'])
+        embedVar.set_footer(icon_url= info['avatar'], text= f"Added by {info['author']}")
+        await self.message_channel.send(embed=embedVar)  
 
     #play next song in queue
     async def play_next(self, ctx):
@@ -42,25 +71,23 @@ class music(commands.Cog):
             self.is_playing = True
 
             info = self.music_queue[0]
-            self.current_song = f"{info['number']}) {info['channel']} - {info['title']}" 
-
             self.music_queue.pop(0)
             
-            video_title = info['title']
             url = info['source']
             
             source = discord.FFmpegOpusAudio(url, **FFMPEG_OPTIONS)
+            #self.voice_channel.play(source, after=lambda e : self.my_after(ctx))
             self.voice_channel.play(source, after=lambda e : self.my_after(ctx))
-
-            await ctx.send(f"🎵 **Playing **`{video_title}`")
-            print(f"PLAYING: '{video_title}'")
+            
+            self.current_song = f"[{info['title']}]({info['web']}) | `{self.time_format(info['duration'])}`"
+            await self.current_song_info(ctx, info)
+            print(f"PLAYING: '{info['title']}'")
 
         else:
             self.is_playing = False
     
     #to pass it into the fucking "lambda e" in "play_next" function
     def my_after(self, ctx):
-        self.previous_song = self.current_song
         coro = self.play_next(ctx)
         fut = asyncio.run_coroutine_threadsafe(coro, self.bot.loop)
         try:
@@ -69,25 +96,43 @@ class music(commands.Cog):
             # an error happened sending the message
             pass
     
+    async def check_voice_channel(self, ctx):
+        #check if the message's sender is in a voice channel
+        if ctx.author.voice is None:
+            await ctx.send(f'❌ **- Get in the voice channel, **`{str(ctx.message.author)[:-5]}`')
+            return False
+
+        #check if the bot is in any voice channel
+        if ctx.voice_client is None:
+            await ctx.send('❌ **- Cannot use this command right now**')
+            return False
+
+        #check if the bot had already connected to the right voice chat
+        if ctx.author.voice.channel != ctx.voice_client.channel:
+            await ctx.send('❌ **- You need to get in the same voice channel as me**')
+            return False
+
+        return True
+
     @commands.command(name='play', help='Play audio drom Youtube', aliases=['p'])
     async def play(self, ctx, *items):
 
-        #check if the message's sender is in a voice chat
+        self.message_channel = ctx.channel
+
+        #check if the message's sender is in a voice channel
         if ctx.author.voice is None:
-            await ctx.send(f'❌ **- Get in the voice chat, **`{str(ctx.message.author)[:-5]}`')
+            await ctx.send(f'❌ **- Get in the voice channel, **`{str(ctx.message.author)[:-5]}`')
             return
 
-        #check if the bot is in any voice chat
-        voice_channel = ctx.author.voice.channel
-
+        #check if the bot is in any voice channel
         if ctx.voice_client is None:
-            self.voice_channel = await voice_channel.connect()
-            await ctx.send(f'⤵ **Joined **`{voice_channel}`')
+            self.voice_channel = await ctx.author.voice.channel.connect()
+            await ctx.send(f'⤵ **Joined **`{ctx.author.voice.channel}`')
 
         else:
-            #check if the bot had already connected to the right voice chat
-            if voice_channel != ctx.voice_client.channel:
-                await ctx.send('❌ **- You need to get in the same voice chat as me**')
+            #check if command sender had already connected to the bot's voice channel
+            if ctx.author.voice.channel != ctx.voice_client.channel:
+                await ctx.send('❌ **- You need to get in the same voice channel as me**')
                 return
 
         #Get video link from Youtube then stream
@@ -97,8 +142,11 @@ class music(commands.Cog):
         if not info:
             await ctx.send(f'❌ **- Not found** `{item}`')
             return
-            
+        
+        info['avatar'] = ctx.author.avatar_url
+        info['author'] = ctx.author.name
         self.music_queue.append(info)
+
         await ctx.send(f"**▷** ***Queued*** **:**  `{info['title']}`")
 
         if not self.is_playing:
@@ -107,31 +155,35 @@ class music(commands.Cog):
     @commands.command(name='join', help='Join a voice channel')
     async def join(self, ctx):
 
-        #check if the message's sender is in a voice chat
+        self.message_channel = ctx.channel
+
+        #check if the message's sender is in a voice channel
         if ctx.author.voice is None:
-            await ctx.send(f'❌ **- Get in the voice chat, **`{str(ctx.message.author)[:-5]}`')
+            await ctx.send(f'❌ **- Get in the voice channel, **`{str(ctx.message.author)[:-5]}`')
+            return
+
+        #check if the bot is in any voice channel
+        voice_channel = ctx.author.voice.channel
+        if ctx.voice_client is None:
+            self.voice_channel = await voice_channel.connect()
+            await ctx.send(f'⤵ **Joined **`{voice_channel}`')
+            return
+
+        #check if the bot had already connected to the right voice channel
+        if voice_channel == ctx.voice_client.channel:
+            await ctx.send(f'❌ **- Already join **`{voice_channel}`')
 
         else:
-            #check if the bot is in any voice chat
-            voice_channel = ctx.author.voice.channel
-
-            if ctx.voice_client is None:
-                self.voice_channel = await voice_channel.connect()
-                await ctx.send(f'⤵ **Joined **`{voice_channel}`')
-
-            else:
-                #check if the bot had already connected to the right voice chat
-                if voice_channel == ctx.voice_client.channel:
-                    await ctx.send(f'❌ **- Already join **`{voice_channel}`')
-
-                else:
-                    ctx.voice_client.pause()
-                    await ctx.voice_client.move_to(voice_channel)
-                    await ctx.send(f'➡ **Moved to **`{voice_channel}`')
-                    ctx.voice_client.resume()
+            ctx.voice_client.pause()
+            await ctx.voice_client.move_to(voice_channel)
+            await ctx.send(f'➡ **Moved to **`{voice_channel}`')
+            ctx.voice_client.resume()
 
     @commands.command(name='leave', help='Leave voice chat', aliases=['disconnect'])
     async def leave(self, ctx):
+        if not await self.check_voice_channel(ctx):
+            return
+        self.message_channel = ctx.channel
 
         voice_chat = ctx.voice_client
         if voice_chat.is_connected():
@@ -143,6 +195,9 @@ class music(commands.Cog):
 
     @commands.command(name='pause', help='Pause music')
     async def pause(self, ctx):
+        if not await self.check_voice_channel(ctx):
+            return
+        self.message_channel = ctx.channel
 
         voice_chat = ctx.voice_client
         if voice_chat.is_playing():
@@ -154,6 +209,9 @@ class music(commands.Cog):
         
     @commands.command(name='resume', help='Resume music')
     async def resume(self, ctx):
+        if not await self.check_voice_channel(ctx):
+            return
+        self.message_channel = ctx.channel
 
         voice_chat = ctx.voice_client
         if voice_chat.is_paused():
@@ -165,39 +223,99 @@ class music(commands.Cog):
 
     @commands.command(name='skip', help='Skip current music')
     async def skip(self, ctx):
+        if not await self.check_voice_channel(ctx):
+            return
+        self.message_channel = ctx.channel
+
         if self.voice_channel:
             ctx.voice_client.stop()
-            await ctx.send('⏹ ***Skipped***')
+            await ctx.send('⏭ ***Skipped***')
 
     @commands.command(name="queue", help="Display current songs in queue", aliases=['q'])
     async def queue(self, ctx):
+        if not await self.check_voice_channel(ctx):
+            return
+        self.message_channel = ctx.channel
+
         songs = ""
+        total_duration = 0
         in_queue = False
         songs_number = len(self.music_queue)
-        if songs_number - 8 < 1:
-            for i in range(0, songs_number):
-                songs += str(self.music_queue[i]['number']) + ") " + self.music_queue[i]['channel'] + " - " + self.music_queue[i]['title'] + "\n"
-                in_queue = True
-            songs += "\n    This is the end of the queue!"
 
-        else:
-            for i in range(0, 8):
-                songs += str(self.music_queue[i]['number']) + ") " + self.music_queue[i]['channel'] + " - " + self.music_queue[i]['title'] + "\n"
+        for i in range(0, songs_number):
+            if i < 8:
+                songs += f"`{i+1}.` [{self.music_queue[i]['title']}]({self.music_queue[i]['web']}) | `{self.time_format(self.music_queue[i]['duration'])}`\n"
                 in_queue = True
-            songs += "\n    " + str(songs_number - 8) + " more song(s)"
+            total_duration += self.music_queue[i]['duration']
+
+        if songs_number <= 8:
+            songs += f"\n**{songs_number} songs in queue | {self.time_format(total_duration)} total length**"
+        else:
+            songs += f"\n{songs_number-8} more song(s)\n**{songs_number} songs in queue | {self.time_format(total_duration)} total length**"
 
         if in_queue:
-            await ctx.send(f"```ml\n{self.previous_song}\n     ⬐ current track\n{self.current_song}\n     ⬑ current track\n{songs}```")
+            embedVar = discord.Embed(title="▷ **QUEUE:**", color=0x83f8c9)
+            embedVar.add_field(name="__Now Playing:__", value=self.current_song, inline=False)
+            embedVar.add_field(name="__Next:__", value=songs ,inline=False)
+            await ctx.send(embed=embedVar)
         else:
             await ctx.send(f"⛔ **No music in queue**")
 
-    @commands.command(name='clear', help='Clear music queue')
-    async def clear(self, ctx):
+    @commands.command(name='clearall', help='Clear all musics in queue', aliases=['clrall'])
+    async def clearall(self, ctx):
+        if not await self.check_voice_channel(ctx):
+            return
         if len(self.music_queue) != 0:
             self.music_queue.clear()
-            await ctx.send('💥 ***Cleared***')
+            await ctx.send('💥 ***Cleared All***')
         else:
             await ctx.send("❌ **- Nothing to clear**")
+
+    @commands.command(name='clear', help='Clear ONE music in queue', aliases=['clr'])
+    async def clear(self, ctx, item):
+        if not await self.check_voice_channel(ctx):
+            return
+        self.message_channel = ctx.channel
+
+        number = int(item) - 1
+        if number < 0:
+            await ctx.send("❌ **- You are the fucking reason I had to foolproof this command**")
+            return
+
+        if len(self.music_queue) != 0:
+            if number < len(self.music_queue):
+                await ctx.send(f"💥 ***Cleared*** `{self.music_queue[number]['title']}`")
+                self.music_queue.pop(number)
+            else:
+                await ctx.send("❌ **- That song don't exist**")
+        else:
+            await ctx.send("❌ **- Nothing to clear**")
+
+    @commands.command(name='jump', help='Jump to music in queue')
+    async def jump(self, ctx, item):
+        if not await self.check_voice_channel(ctx):
+            return
+        self.message_channel = ctx.channel
+
+        number = int(item) - 1
+        if number < 0:
+            await ctx.send("❌ **- You are the fucking reason I had to foolproof this command**")
+            return
+
+        if number == 0:
+            await ctx.send("**Yes, you can do this but why though**❔\n⏭ ***Skipped***")
+            ctx.voice_client.stop()
+            return
+        
+        if len(self.music_queue) != 0:
+            if number < len(self.music_queue):
+                await ctx.send(f"**↷** ***Jump to*** `{self.music_queue[number]['title']}`")
+                self.music_queue = self.music_queue[number:]
+                ctx.voice_client.stop()
+            else:
+                await ctx.send("❌ **- That song don't exist**")
+        else:
+            await ctx.send("❌ **- Nothing to jump to**")
     
     @commands.command(name='rickroll', help='Tag a person to rickroll', aliases=['rick'])
     async def rickroll(self, ctx):
@@ -209,9 +327,9 @@ class music(commands.Cog):
             return
 
         #check if they try to make the bot rickroll itself
-        name = f"{acc}"
+        name = str(acc)
         await ctx.send(f"**OPERATION:  **`Rickroll {name[:-5]}`")
-        if name == 'Vinyl#5573':
+        if name == str(self.bot.user):
             await ctx.send("**Ha ha! Do you think I'm that stupid  😎**")
             return
 
