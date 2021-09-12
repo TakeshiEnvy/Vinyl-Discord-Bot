@@ -76,7 +76,6 @@ class music(commands.Cog):
             url = info['source']
             
             source = discord.FFmpegOpusAudio(url, **FFMPEG_OPTIONS)
-            #self.voice_channel.play(source, after=lambda e : self.my_after(ctx))
             self.voice_channel.play(source, after=lambda e : self.my_after(ctx))
             
             self.current_song = f"[{info['title']}]({info['web']}) | `{self.time_format(info['duration'])}`"
@@ -242,16 +241,17 @@ class music(commands.Cog):
         in_queue = False
         songs_number = len(self.music_queue)
 
+        #max songs that I can create in queue list is around 12 or lower
         for i in range(0, songs_number):
-            if i < 8:
-                songs += f"`{i+1}.` [{self.music_queue[i]['title']}]({self.music_queue[i]['web']}) | `{self.time_format(self.music_queue[i]['duration'])}`\n"
+            if i < 10:
+                songs += f"`{i+1}.` {self.music_queue[i]['title']} | `{self.time_format(self.music_queue[i]['duration'])}`\n\n"
                 in_queue = True
             total_duration += self.music_queue[i]['duration']
 
-        if songs_number <= 8:
-            songs += f"\n**{songs_number} songs in queue | {self.time_format(total_duration)} total length**"
+        if songs_number <= 10:
+            songs += f"**{songs_number} songs in queue | {self.time_format(total_duration)} total length**"
         else:
-            songs += f"\n{songs_number-8} more song(s)\n**{songs_number} songs in queue | {self.time_format(total_duration)} total length**"
+            songs += f"{songs_number-10} more song(s)\n**{songs_number} songs in queue | {self.time_format(total_duration)} total length**"
 
         if in_queue:
             embedVar = discord.Embed(title="▷ **QUEUE:**", color=0x83f8c9)
