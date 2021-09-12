@@ -18,8 +18,7 @@ class message(commands.Cog):
     def evilinsult(self):
         response = requests.get("https://evilinsult.com/generate_insult.php?lang=en&type=json")
         json_data = json.loads(response.text)
-        quote = json_data['insult']
-        return quote
+        return json_data['insult']
 
     @commands.command(name='inspire', help='Send inpired quote')
     async def inspire(self, ctx):

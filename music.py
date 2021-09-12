@@ -1,10 +1,15 @@
 import discord
 from discord.ext import commands
+from discord.ext.commands import context
 from discord.player import FFmpegPCMAudio
 import youtube_dl
 from youtube_dl.YoutubeDL import YoutubeDL
-import time
+from dotenv import load_dotenv
 import asyncio
+import time
+import os
+
+load_dotenv()
 
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 YDL_OPTIONS = {'format':'bestaudio[ext=m4a]', 'noplaylist':'True'}
@@ -22,10 +27,10 @@ class music(commands.Cog):
         self.numbering = 0
 
     #search youtube for item
-    def yt_search(self, item):
+    def yt_search(self, query):
         with YoutubeDL(YDL_OPTIONS) as ydl:
             try:
-                info = ydl.extract_info(f'ytsearch:{item}', download=False)['entries'][0]
+                info = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
                 self.numbering += 1
             except Exception:
                 return False
@@ -47,7 +52,7 @@ class music(commands.Cog):
             source = discord.FFmpegOpusAudio(url, **FFMPEG_OPTIONS)
             self.voice_channel.play(source, after=lambda e : self.my_after(ctx))
 
-            await ctx.send(f"▶ **Playing **`{video_title}`")
+            await ctx.send(f"🎵 **Playing **`{video_title}`")
             print(f"PLAYING: '{video_title}'")
 
         else:
@@ -69,7 +74,7 @@ class music(commands.Cog):
 
         #check if the message's sender is in a voice chat
         if ctx.author.voice is None:
-            await ctx.send(f'❌  **Get in the fucking voice chat, **`{ctx.message.author}`')
+            await ctx.send(f'❌ **- Get in the voice chat, **`{str(ctx.message.author)[:-5]}`')
             return
 
         #check if the bot is in any voice chat
@@ -92,8 +97,9 @@ class music(commands.Cog):
         if not info:
             await ctx.send(f'❌ **- Not found** `{item}`')
             return
+            
         self.music_queue.append(info)
-        await ctx.send(f"**->** ***Queued*** **:**  `{info['title']}`")
+        await ctx.send(f"**▷** ***Queued*** **:**  `{info['title']}`")
 
         if not self.is_playing:
             await self.play_next(ctx)
@@ -103,7 +109,7 @@ class music(commands.Cog):
 
         #check if the message's sender is in a voice chat
         if ctx.author.voice is None:
-            await ctx.send(f'❌ **- Get in the fucking voice chat, **`{ctx.message.author}`')
+            await ctx.send(f'❌ **- Get in the voice chat, **`{str(ctx.message.author)[:-5]}`')
 
         else:
             #check if the bot is in any voice chat
@@ -135,25 +141,6 @@ class music(commands.Cog):
         else:
             await ctx.send('❌**- Already disconnected**')
 
-    @commands.command(name="queue", help="Displays the current songs in queue", aliases=['q'])
-    async def queue(self, ctx):
-        songs = ""
-        songs_number = len(self.music_queue)
-        if songs_number - 8 < 1:
-            for i in range(0, songs_number):
-                songs += str(self.music_queue[i]['number']) + ") " + self.music_queue[i]['channel'] + " - " + self.music_queue[i]['title'] + "\n"
-            songs += "\n    This is the end of the queue!"
-
-        else:
-            for i in range(0, 8):
-                songs += str(self.music_queue[i]['number']) + ") " + self.music_queue[i]['channel'] + " - " + self.music_queue[i]['title'] + "\n"
-            songs += "\n    " + str(songs_number - 8) + " more song(s)"
-
-        if not songs:
-            await ctx.send("No music in queue")
-        else:
-            await ctx.send(f"```ml\n{self.previous_song}\n     ⬐ current track\n{self.current_song}\n     ⬑ current track\n{songs}```")
-
     @commands.command(name='pause', help='Pause music')
     async def pause(self, ctx):
 
@@ -182,6 +169,36 @@ class music(commands.Cog):
             ctx.voice_client.stop()
             await ctx.send('⏹ ***Skipped***')
 
+    @commands.command(name="queue", help="Display current songs in queue", aliases=['q'])
+    async def queue(self, ctx):
+        songs = ""
+        in_queue = False
+        songs_number = len(self.music_queue)
+        if songs_number - 8 < 1:
+            for i in range(0, songs_number):
+                songs += str(self.music_queue[i]['number']) + ") " + self.music_queue[i]['channel'] + " - " + self.music_queue[i]['title'] + "\n"
+                in_queue = True
+            songs += "\n    This is the end of the queue!"
+
+        else:
+            for i in range(0, 8):
+                songs += str(self.music_queue[i]['number']) + ") " + self.music_queue[i]['channel'] + " - " + self.music_queue[i]['title'] + "\n"
+                in_queue = True
+            songs += "\n    " + str(songs_number - 8) + " more song(s)"
+
+        if in_queue:
+            await ctx.send(f"```ml\n{self.previous_song}\n     ⬐ current track\n{self.current_song}\n     ⬑ current track\n{songs}```")
+        else:
+            await ctx.send(f"⛔ **No music in queue**")
+
+    @commands.command(name='clear', help='Clear music queue')
+    async def clear(self, ctx):
+        if len(self.music_queue) != 0:
+            self.music_queue.clear()
+            await ctx.send('💥 ***Cleared***')
+        else:
+            await ctx.send("❌ **- Nothing to clear**")
+    
     @commands.command(name='rickroll', help='Tag a person to rickroll', aliases=['rick'])
     async def rickroll(self, ctx):
 
@@ -193,7 +210,7 @@ class music(commands.Cog):
 
         #check if they try to make the bot rickroll itself
         name = f"{acc}"
-        await ctx.send(f"**OPERATION:  **`Rickroll {name}`")
+        await ctx.send(f"**OPERATION:  **`Rickroll {name[:-5]}`")
         if name == 'Vinyl#5573':
             await ctx.send("**Ha ha! Do you think I'm that stupid  😎**")
             return
@@ -223,8 +240,8 @@ class music(commands.Cog):
 
         voice_chat = ctx.voice_client
 
-        voice_chat.play(discord.FFmpegPCMAudio(source='/home/pi/Appdata/VinylBot/data/Rickroll.mp3'))
-        await ctx.send(f"😆🎤  **Successfully rickrolled **`{name}`")
+        voice_chat.play(discord.FFmpegPCMAudio(source=os.getenv('RICKROLL')))
+        await ctx.send(f"😆🎤  **Successfully rickrolled **`{name[:-5]}`")
         time.sleep(18)
         await voice_chat.disconnect()
 
