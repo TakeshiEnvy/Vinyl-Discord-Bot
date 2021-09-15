@@ -15,13 +15,13 @@ YDL_OPTIONS = {
 queued_music = {
     'header': "▷ **Queue:**",
     'color': 0xe67e22,
-    'info1': "Position in queue"
+    'info3': "Position in queue"
 }
 
 playing_music = {
     'header': "🎵  **Playing:**",
     'color': 0xff0000,
-    'info1': "Songs in queue"
+    'info3': "Songs in queue"
 }
 
 max_songs_in_queue = 10

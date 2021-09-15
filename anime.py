@@ -8,9 +8,9 @@ import config
 
 #categories uses to request from "waifu.pics" api
 nsfw_categories = ['waifu', 'neko', 'trap', 'blowjob']
-sfw_categories = ['waifu', 'neko', 'shinobu', 'megumin', 'bully', 'cuddle','cry', 'hug', 'awoo', 'kiss',
-                    'lick', 'pat', 'smug', 'bonk', 'yeet', 'blush', 'smile','wave', 'highfive', 'handhold',
-                    'nom', 'bite', 'glomp', 'slap', 'kill', 'kick', 'happy', 'wink', 'poke', 'dance', 'cringe']
+sfw_categories = ['waifu', 'neko', 'shinobu', 'megumin', 'bully', 'cuddle','cry', 'hug', 'awoo', 'kiss', 'lick', 'pat', 'smug',
+                'bonk', 'yeet', 'blush', 'smile','wave', 'highfive', 'handhold', 'nom', 'bite', 'glomp', 'slap', 'kill', 'kick',
+                'happy', 'wink', 'poke', 'dance', 'cringe']
 
 class anime(commands.Cog):
     def __init__(self, bot):
@@ -22,6 +22,7 @@ class anime(commands.Cog):
         self.staffs = []
         self.voice_actors = []
         self.type = ''
+        self.previous_command = ''
 
     #convert argument 'main' and 'support'
     def convert_arg(self, arg):
@@ -38,7 +39,7 @@ class anime(commands.Cog):
 
     #get waifu pics from "waifu.pics"
     def get_waifu_pics(self, type, category):
-        url = f'https://api.waifu.pics/{type}/{category}'
+        url = f'https://waifu.pics/api/{type}/{category}'
         response = requests.get(url, timeout=3)
         json_data = json.loads(response.text)
         return json_data['url']
@@ -110,9 +111,6 @@ class anime(commands.Cog):
                     temp = self.process_voice_actor(info[i]['voice_actors'][j])
                     voice_actor.append(temp)
 
-            if voice_actor == []:
-                voice_actor = 'N/A'
-
             if arg == '':
                 self.characters.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'], 
                                         'name': info[i]['name'].replace(',', ''), 'role': info[i]['role'], 'voice': voice_actor})
@@ -153,9 +151,6 @@ class anime(commands.Cog):
             for j in range(0, len(info[i]['positions'])):
                 positions.append(info[i]['positions'][j])
 
-            if positions == []:
-                positions = 'N/A'
-
             self.staffs.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'],
                                 'name': info[i]['name'].replace(',', ''), 'positions': positions})
 
@@ -166,22 +161,20 @@ class anime(commands.Cog):
         await ctx.send(embed=embedVar)
 
     #send embed anime info
-    async def embed_anime_info(self, ctx, info, color):
-        embedVar = discord.Embed(title=f"**{info['title']}**", url=info['url'], description=f"**Type:** {info['type']}", color=color)
-        embedVar.add_field(name="⭐ Score:", value=info['score'], inline=True)
-        embedVar.add_field(name="Source:", value=info['source'], inline=True)
-
+    async def embed_anime_info(self, ctx, info):
         studios = ''
         if info['studios'] != []:
             for i in range(0, len(info['studios'])):
                 studios += f"[{info['studios'][i]['name']}]({info['studios'][i]['url']})\n"
         else:
             studios = 'N/A'
-
-        embedVar.add_field(name="Studio(s):", value=studios, inline=True)
-        embedVar.add_field(name="Season:", value=info['season'], inline=True)
-        embedVar.add_field(name="Start date:", value=info['start'], inline=True)
-        embedVar.add_field(name="End:", value=info['end'], inline=True)
+        embedVar = discord.Embed(title=f"**{info['title']}**", url=info['url'], description=f"**Type:** {info['type']}", color=config.anime_color)
+        embedVar.add_field(name="⭐ Score:", value=info['score'])
+        embedVar.add_field(name="Source:", value=info['source'])
+        embedVar.add_field(name="Studio(s):", value=studios)
+        embedVar.add_field(name="Season:", value=info['season'])
+        embedVar.add_field(name="Start date:", value=info['start'])
+        embedVar.add_field(name="End:", value=info['end'])
         embedVar.add_field(name="Synopsis:", value=info['synopsis'], inline=False)
         embedVar.set_thumbnail(url=info['image'])
         embedVar.set_author(name='ANIME')
@@ -193,72 +186,62 @@ class anime(commands.Cog):
             await ctx.send(info['trailer'])
 
     #send embed manga info
-    async def embed_manga_info(self, ctx, info, color):
-        embedVar = discord.Embed(title=f"**{info['title']}**", url=info['url'], description=f"**Type:** {info['type']}", color=color)
-        embedVar.add_field(name="⭐ Score:", value=info['score'], inline=True)
-        embedVar.add_field(name="Status:", value=info['status'], inline=True)
-
+    async def embed_manga_info(self, ctx, info):
         authors = ''
         if info['authors'] != []:
             for i in range(0, len(info['authors'])):
                 authors += f"[{info['authors'][i]['name']}]({info['authors'][i]['url']})\n"
         else:
             authors = 'N/A'
-
-        embedVar.add_field(name="Author(s):", value=authors, inline=True)
-        embedVar.add_field(name="Start date:", value=info['start'], inline=True)
-        embedVar.add_field(name="End:", value=info['end'], inline=True)
+        embedVar = discord.Embed(title=f"**{info['title']}**", url=info['url'], description=f"**Type:** {info['type']}", color=config.manga_color)
+        embedVar.add_field(name="⭐ Score:", value=info['score'])
+        embedVar.add_field(name="Author(s):", value=authors)
+        embedVar.add_field(name="Status:", value=info['status'])
+        embedVar.add_field(name="Start date:", value=info['start'])
+        embedVar.add_field(name="End:", value=info['end'])
         embedVar.add_field(name="Synopsis:", value=info['synopsis'], inline=False)
         embedVar.set_thumbnail(url=info['image'])
         embedVar.set_author(name="MANGA")
-
         await ctx.send(embed=embedVar)
 
     #send embed anime character info
-    async def embed_anime_characters_info(self, ctx, info, color):
-        embedVar = discord.Embed(title=info['name'], url=info['url'], color=color)
-        voice_actors = info['voice']
-
-        if voice_actors != 'N/A':
-            voice_actors_name = ''
-            for i in range(0, len(voice_actors)):
-                voice_actors_name += f"[{voice_actors[i]['name']}]({voice_actors[i]['url']})\n"
-            embedVar.add_field(name="Seiyuu:", value=voice_actors_name, inline=True)
-
+    async def embed_anime_characters_info(self, ctx, info):
+        voice_actors_name = ''
+        if info['voice'] != []:
+            for i in range(0, len(info['voice'])):
+                voice_actors_name += f"[{info['voice'][i]['name']}]({info['voice'][i]['url']})\n"
         else:
-            embedVar.add_field(name="Seiyuu:", value="N/A", inline=True)
-
-        embedVar.add_field(name="Role:", value=info['role'], inline=True)
+            voice_actors_name = 'N/A'
+        embedVar = discord.Embed(title=info['name'], url=info['url'], color=config.character_color)
+        embedVar.add_field(name="Seiyuu:", value=voice_actors_name)
+        embedVar.add_field(name="Role:", value=info['role'])
         embedVar.set_thumbnail(url=info['image'])
         await ctx.send(embed=embedVar)
 
     #send embed manga character info
     async def embed_manga_characters_info(self, ctx, info, color):
-        embedVar = discord.Embed(title=info['name'], url=info['url'], description=f"**Role:** {info['role']}", color=color)
+        embedVar = discord.Embed(title=info['name'], url=info['url'], description=f"**Role:** {info['role']}", color=config.character_color)
         embedVar.set_thumbnail(url=info['image'])
         await ctx.send(embed=embedVar)
         
     #send embed seiyuu info
-    async def embed_seiyuu_info(self, ctx, info, color):
-        embedVar = discord.Embed(title=info['name'], url=info['url'], color=color)
-        embedVar.add_field(name="Voiced:", value=f"[{info['character']}]({info['character_url']})", inline=True)
-        embedVar.add_field(name="Role:", value=info['role'], inline=True)
+    async def embed_seiyuu_info(self, ctx, info):
+        embedVar = discord.Embed(title=info['name'], url=info['url'], color=config.seiyuu_color)
+        embedVar.add_field(name="Voiced:", value=f"[{info['character']}]({info['character_url']})")
+        embedVar.add_field(name="Role:", value=info['role'])
         embedVar.set_thumbnail(url=info['image'])
         await ctx.send(embed=embedVar)
 
     #send embed anime's staff info
-    async def embed_anime_staff_info(self, ctx, info, color):
-        embedVar = discord.Embed(title=info['name'], url=info['url'], description=f"**ID:** {info['id']}", color=color)
-        
+    async def embed_anime_staff_info(self, ctx, info):
+        positions = ''
         if info['positions'] != 'N/A':
-            positions = ''
             for i in range(0, len(info['positions'])):
                 positions += f"{info['positions'][i]}\n"
-
-            embedVar.add_field(name="Position(s):", value=positions, inline=True)
         else:
-            embedVar.add_field(name="Position(s):", value="N/A", inline=True)
-
+            positions = 'N/A'
+        embedVar = discord.Embed(title=info['name'], url=info['url'], description=f"**ID:** {info['id']}", color=config.staff_color)
+        embedVar.add_field(name="Position(s):", value=positions)
         embedVar.set_thumbnail(url=info['image'])
         await ctx.send(embed=embedVar)
 
@@ -289,6 +272,7 @@ class anime(commands.Cog):
             await ctx.send('❌  **- Try again later** ↻')
         else:
             await self.embed_anime_info(ctx, self.info, config.anime_color)
+        self.previous_command = 'anime'
 
     @commands.command(name='manga', help='Search for manga', aliases=['m'])
     async def manga(self, ctx, *items):
@@ -300,11 +284,12 @@ class anime(commands.Cog):
             await ctx.send('❌  **- Try again later** ↻')
         else:
             await self.embed_manga_info(ctx, self.info, config.manga_color)
+        self.previous_command = 'manga'
     
     @commands.command(name='character', help='Search for characters in anime', aliases=['char'])
     async def character(self, ctx, *, arg=''):
-        if not self.info:
-            await ctx.send(f"❌  **- Use '{config.prefix}anime' or '{config.prefix}manga' before this command**")
+        if self.previous_command != 'manga' and self.previous_command != 'anime':
+            await ctx.send(f"❌  **- Use** `{config.prefix}anime` **or** `{config.prefix}manga` **before this command**")
             return
 
         arg = self.convert_arg(arg)
@@ -312,6 +297,7 @@ class anime(commands.Cog):
         await ctx.send(f"🔎 **Searching**")
 
         if self.info['identify'] == 'manga':
+            #manga process
             if self.get_manga_characters_info(arg) == False:
                 await ctx.send('❌  **- Try again later** ↻')
                 return
@@ -319,9 +305,10 @@ class anime(commands.Cog):
                 if len(self.characters) < max_characters:
                     max_characters = len(self.characters)
                 for i in range(0, max_characters):
-                    await self.embed_manga_characters_info(ctx, self.characters[i], config.character_color)
+                    await self.embed_manga_characters_info(ctx, self.characters[i])
 
         else:
+            #anime process
             if self.get_anime_characters_info(arg) == False:
                 await ctx.send('❌  **- Try again later** ↻')
                 return
@@ -329,12 +316,12 @@ class anime(commands.Cog):
                 if len(self.characters) < max_characters:
                     max_characters = len(self.characters)
                 for i in range(0, max_characters):
-                    await self.embed_anime_characters_info(ctx, self.characters[i], config.character_color)
+                    await self.embed_anime_characters_info(ctx, self.characters[i])
 
     @commands.command(name='staff', help="Search for anime's staff", aliases=['stf'])
     async def staff(self, ctx):
-        if not self.info:
-            await ctx.send(f"❌  **- Use '{config.prefix}anime' before this command**")
+        if self.previous_command != 'anime':
+            await ctx.send(f"❌  **- Use** `{config.prefix}anime` **before this command**")
             return
 
         max_characters = config.characters_number
@@ -347,12 +334,12 @@ class anime(commands.Cog):
             if len(self.staffs) < max_characters:
                 max_characters = len(self.staffs)
             for i in range(0, max_characters):
-                await self.embed_anime_staff_info(ctx, self.staffs[i], config.staff_color)
+                await self.embed_anime_staff_info(ctx, self.staffs[i])
 
-    @commands.command(name='seiyuu', help="Search for anime's seiyuu")
+    @commands.command(name='seiyuu', help="Search for anime's seiyuu", aliases=['sei'])
     async def seiyuu(self, ctx, *, arg=''):
-        if not self.info:
-            await ctx.send(f"❌  **- Use '{config.prefix}anime' before this command**")
+        if self.previous_command != 'anime':
+            await ctx.send(f"❌  **- Use** `{config.prefix}anime` **before this command**")
             return
 
         arg = self.convert_arg(arg)
@@ -374,7 +361,7 @@ class anime(commands.Cog):
                     temp['character_url'] = self.characters[i]['url']
                     temp['character_id'] = self.characters[i]['id']
                     temp['role'] = self.characters[i]['role']
-                    await self.embed_seiyuu_info(ctx, temp, config.seiyuu_color)
+                    await self.embed_seiyuu_info(ctx, temp)
 
 def setup(bot):
     bot.add_cog(anime(bot))
