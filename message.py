@@ -12,7 +12,7 @@ class message(commands.Cog):
         try:
             response = requests.get("https://zenquotes.io/api/random", timeout=3)
             json_data = json.loads(response.text)
-            quote = f"'*{json_data[0]['q']}*'**  -  **`{json_data[0]['a']}`"
+            quote = f"'*{json_data[0]['q']}*'\n> **{json_data[0]['a']}**"
             return quote
         except:
             return False
@@ -25,6 +25,8 @@ class message(commands.Cog):
             return json_data['insult']
         except:
             return False
+
+#================================================================================================================================================
 
     @commands.command(name='inspire', help='Send inpired quote')
     async def inspire(self, ctx):
@@ -41,6 +43,15 @@ class message(commands.Cog):
             await ctx.send("❌  **- Error**")
         else:
             await ctx.send(f'😈 : {quote}')
+    
+    @commands.command(name='ping', help="Measure bot's latency")
+    async def ping(self, ctx):
+        await ctx.send(f'**Pong!** `{round(self.bot.latency * 1000)}ms`')
+    
+    @commands.command()
+    async def image(self, ctx):
+        #await ctx.send("D:\Code\Vinyl-Discord-Bot\data\emotes\AquaBaka.png")
+        await ctx.send(file=discord.File('./data/emotes/AquaBaka.png'))
 
 def setup(bot):
     bot.add_cog(message(bot))

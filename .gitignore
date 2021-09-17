@@ -5,4 +5,8 @@ __pycache__
 spotify.py
 documents
 data/icon
+data/cookiefile.txt
+data/cookies.txt
+data/emotes
 config.json
+cookies.txt

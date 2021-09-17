@@ -46,7 +46,7 @@ class music(commands.Cog):
                 if  m < 10:
                     minute = f"0{m}"
                 else:
-                    minute =m
+                    minute = m
                 return f"{h}:{minute}:{second}"
 
             else:
@@ -55,13 +55,13 @@ class music(commands.Cog):
     #display song's info
     async def song_info(self, info, config, songs_number):
         embedVar = discord.Embed(title=config['header'], description=f"**[{info['title']}]({info['web']})**", color=config['color'])
-        embedVar.add_field(name="Channel", value=info['channel'], inline=True)
-        embedVar.add_field(name="Duration", value=self.second_convert(info['duration']))
+        embedVar.add_field(name="Channel:", value=info['channel'], inline=True)
+        embedVar.add_field(name="Duration:", value=self.second_convert(info['duration']))
         
         if songs_number == 0:
-            embedVar.add_field(name=config['info1'], value=len(self.music_queue))
+            embedVar.add_field(name=config['info3'], value=len(self.music_queue))
         else:
-            embedVar.add_field(name=config['info1'], value=songs_number)
+            embedVar.add_field(name=config['info3'], value=songs_number)
         
         embedVar.set_thumbnail(url= info['thumbnail'])
         embedVar.set_footer(icon_url= info['avatar'], text= f"Added by {info['author']}")
@@ -128,6 +128,8 @@ class music(commands.Cog):
 
         return True
 
+#================================================================================================================================================
+
     @commands.command(name='play', help='Play audio from Youtube', aliases=['p'])
     async def play(self, ctx, *items):
 
@@ -168,7 +170,7 @@ class music(commands.Cog):
 
         if not self.is_playing:
             await self.play_next(ctx)
-    
+
     @commands.command(name='join', help='Join a voice channel')
     async def join(self, ctx):
         self.message_channel = ctx.channel
@@ -215,9 +217,8 @@ class music(commands.Cog):
         if not await self.check_voice_channel(ctx):
             return
 
-        voice_chat = ctx.voice_client
-        if voice_chat.is_playing():
-            voice_chat.pause()
+        if ctx.voice_client.is_playing():
+            ctx.voice_client.pause()
             await ctx.send('⏸ ***Paused***')
 
         else:
@@ -228,9 +229,8 @@ class music(commands.Cog):
         if not await self.check_voice_channel(ctx):
             return
 
-        voice_chat = ctx.voice_client
-        if voice_chat.is_paused():
-            voice_chat.resume()
+        if ctx.voice_client.is_paused():
+            ctx.voice_client.resume()
             await ctx.send('⏯ ***Resuming***')
 
         else:
@@ -299,7 +299,7 @@ class music(commands.Cog):
 
         if len(self.music_queue) != 0:
             if number < len(self.music_queue):
-                await ctx.send(f"✂ ***Removed*** `{self.music_queue[number]['title']}`")
+                await ctx.send(f"🧹 ***Removed*** `{self.music_queue[number]['title']}`")
                 self.music_queue.pop(number)
             else:
                 await ctx.send("❌ **- That song don't exist**")
@@ -383,7 +383,6 @@ class music(commands.Cog):
         #check if the bot had already connected to the right voice chat
         elif voice_channel == ctx.voice_client.channel:
             ctx.voice_client.stop()
-
         else:
             await ctx.voice_client.disconnect()
             await voice_channel.connect()

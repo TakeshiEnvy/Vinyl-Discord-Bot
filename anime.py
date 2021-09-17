@@ -7,10 +7,8 @@ import random
 import config
 
 #categories uses to request from "waifu.pics" api
-nsfw_categories = ['waifu', 'neko', 'trap', 'blowjob']
-sfw_categories = ['waifu', 'neko', 'shinobu', 'megumin', 'bully', 'cuddle','cry', 'hug', 'awoo', 'kiss', 'lick', 'pat', 'smug',
-                'bonk', 'yeet', 'blush', 'smile','wave', 'highfive', 'handhold', 'nom', 'bite', 'glomp', 'slap', 'kill', 'kick',
-                'happy', 'wink', 'poke', 'dance', 'cringe']
+hentai_categories = config.hentai_categories
+waifu_categories = config.waifu_categories
 
 class anime(commands.Cog):
     def __init__(self, bot):
@@ -39,10 +37,24 @@ class anime(commands.Cog):
 
     #get waifu pics from "waifu.pics"
     def get_waifu_pics(self, type, category):
-        url = f'https://waifu.pics/api/{type}/{category}'
-        response = requests.get(url, timeout=3)
-        json_data = json.loads(response.text)
-        return json_data['url']
+        try:
+            url = f'https://waifu.pics/api/{type}/{category}'
+            response = requests.get(url, timeout=3)
+            json_data = json.loads(response.text)
+            return json_data
+        except:
+            return False
+
+    #get anime quote from "AnimeChan"
+    def get_anime_quote(self):
+        try:
+            url = f'https://animechan.vercel.app/api/random'
+            response = requests.get(url, timeout=3)
+            json_data = json.loads(response.text)
+            quote = f"*'{json_data['quote']}'*\n> **{json_data['character']}** - `{json_data['anime']}`"
+            return quote
+        except:
+            return False
 
     #get anime info from "MyAnimeList"
     def search_anime(self, query):
@@ -190,7 +202,7 @@ class anime(commands.Cog):
         authors = ''
         if info['authors'] != []:
             for i in range(0, len(info['authors'])):
-                authors += f"[{info['authors'][i]['name']}]({info['authors'][i]['url']})\n"
+                authors += f"[{info['authors'][i]['name'].replace(',', '')}]({info['authors'][i]['url']})\n"
         else:
             authors = 'N/A'
         embedVar = discord.Embed(title=f"**{info['title']}**", url=info['url'], description=f"**Type:** {info['type']}", color=config.manga_color)
@@ -212,15 +224,15 @@ class anime(commands.Cog):
                 voice_actors_name += f"[{info['voice'][i]['name']}]({info['voice'][i]['url']})\n"
         else:
             voice_actors_name = 'N/A'
-        embedVar = discord.Embed(title=info['name'], url=info['url'], color=config.character_color)
+        embedVar = discord.Embed(title=info['name'], url=info['url'], color=config.anime_character_color)
         embedVar.add_field(name="Seiyuu:", value=voice_actors_name)
         embedVar.add_field(name="Role:", value=info['role'])
         embedVar.set_thumbnail(url=info['image'])
         await ctx.send(embed=embedVar)
 
     #send embed manga character info
-    async def embed_manga_characters_info(self, ctx, info, color):
-        embedVar = discord.Embed(title=info['name'], url=info['url'], description=f"**Role:** {info['role']}", color=config.character_color)
+    async def embed_manga_characters_info(self, ctx, info):
+        embedVar = discord.Embed(title=info['name'], url=info['url'], description=f"**Role:** {info['role']}", color=config.manga_character_color)
         embedVar.set_thumbnail(url=info['image'])
         await ctx.send(embed=embedVar)
         
@@ -245,23 +257,40 @@ class anime(commands.Cog):
         embedVar.set_thumbnail(url=info['image'])
         await ctx.send(embed=embedVar)
 
+#================================================================================================================================================
 
     @commands.command(name='lewd', help='Send random NSFW waifu pic or gif')
     async def lewd(self, ctx, *, arg=''):
-        if arg in nsfw_categories:
+        if arg in hentai_categories:
             link = self.get_waifu_pics('nsfw', arg)
         else:
-            link = self.get_waifu_pics('nsfw', random.choice(nsfw_categories))
-        await self.embed_image(ctx, link, config.hentai_color)
+            link = self.get_waifu_pics('nsfw', random.choice(hentai_categories))
+
+        if not link:
+            await ctx.send("❌  **- Error**")
+        else:
+            await self.embed_image(ctx, link, config.hentai_color)
 
     @commands.command(name='waifu', help='Send random SFW waifu pic or gif')
     async def waifu(self, ctx, *, arg=''):
-        if arg in sfw_categories:
+        if arg in waifu_categories:
             link = self.get_waifu_pics('sfw', arg)
         else:
-            link = self.get_waifu_pics('sfw', random.choice(sfw_categories))
-        await self.embed_image(ctx, link, config.waifu_color)
-        
+            link = self.get_waifu_pics('sfw', random.choice(waifu_categories))
+
+        if not link:
+            await ctx.send("❌  **- Error**")
+        else:
+            await self.embed_image(ctx, link, config.waifu_color)
+    
+    @commands.command(name='aniquote', help='Send random anime quote', aliases=['aquote', 'aq'])
+    async def aniquote(self, ctx):
+        quote = self.get_anime_quote()
+        if not quote:
+            await ctx.send("❌  **- Error**")
+        else:
+            await ctx.send(quote)
+
     @commands.command(name='anime', help='Search for anime', aliases=['a'])
     async def anime(self, ctx, *items):
         item = " ".join(items)
@@ -271,7 +300,7 @@ class anime(commands.Cog):
         if not self.info:
             await ctx.send('❌  **- Try again later** ↻')
         else:
-            await self.embed_anime_info(ctx, self.info, config.anime_color)
+            await self.embed_anime_info(ctx, self.info)
         self.previous_command = 'anime'
 
     @commands.command(name='manga', help='Search for manga', aliases=['m'])
@@ -283,7 +312,7 @@ class anime(commands.Cog):
         if not self.info:
             await ctx.send('❌  **- Try again later** ↻')
         else:
-            await self.embed_manga_info(ctx, self.info, config.manga_color)
+            await self.embed_manga_info(ctx, self.info)
         self.previous_command = 'manga'
     
     @commands.command(name='character', help='Search for characters in anime', aliases=['char'])
