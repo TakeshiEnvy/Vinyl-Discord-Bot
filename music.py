@@ -1,14 +1,10 @@
 import discord
 from discord.ext import commands
 from youtube_dl.YoutubeDL import YoutubeDL
-from dotenv import load_dotenv
 import asyncio
 import time
-import os
 
 import config
-
-load_dotenv()
 
 class music(commands.Cog):
     def __init__(self, bot):
@@ -48,7 +44,6 @@ class music(commands.Cog):
                 else:
                     minute = m
                 return f"{h}:{minute}:{second}"
-
             else:
                 return f"{m}:{second}"
 
@@ -236,7 +231,7 @@ class music(commands.Cog):
         else:
             await ctx.send('❌ **- Already playing**')
 
-    @commands.command(name='skip', help='Skip current music')
+    @commands.command(name='skip', help='Skip current music', aliases=['next'])
     async def skip(self, ctx):
         if not await self.check_voice_channel(ctx):
             return
@@ -388,7 +383,7 @@ class music(commands.Cog):
             await voice_channel.connect()
 
         voice_chat = ctx.voice_client
-        voice_chat.play(discord.FFmpegPCMAudio(source=os.getenv('RICKROLL')))
+        voice_chat.play(discord.FFmpegPCMAudio(source="data/Rickroll.mp3"))
         await ctx.send(f"😆🎤  **Successfully rickrolled **`{name[:-5]}`")
         time.sleep(18)
         await voice_chat.disconnect()

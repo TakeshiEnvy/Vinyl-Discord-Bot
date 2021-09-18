@@ -1,9 +1,14 @@
-import os
-from dotenv import load_dotenv
-load_dotenv
-
 #admin
 prefix="?"
+
+#message
+qrcode = {
+    'version': 1,
+    'qr_foreground': (255, 255, 255),
+    'qr_background': (88, 101, 242),
+    'box_size': 10,
+    'border': 3
+}
 
 #music options
 FFMPEG_OPTIONS = {
@@ -14,7 +19,7 @@ FFMPEG_OPTIONS = {
 YDL_OPTIONS = {
     'format': 'bestaudio[ext=m4a]',
     'noplaylist': 'True',
-    'cookiefile': os.getenv('COOKIES')
+    'cookiefile': "data/cookies.txt"
 }
 
 queued_music = {
@@ -33,9 +38,10 @@ max_songs_in_queue = 10
 disconnect_time = 900
 
 #anime function options
-hentai_categories = ['waifu', 'neko', 'trap', 'blowjob']
 hentai_color = 0xd59de0
+hentai_categories = ['waifu', 'neko', 'trap', 'blowjob']
 
+waifu_color = 0x007acc
 waifu_categories =['waifu', 'neko' , 'shinobu', 'megumin' , 'bully',
                 'cuddle'  ,'cry'   , 'hug'    , 'awoo'    , 'kiss',
                 'lick'    , 'pat'  , 'smug'   , 'bonk'    , 'yeet',
@@ -43,7 +49,6 @@ waifu_categories =['waifu', 'neko' , 'shinobu', 'megumin' , 'bully',
                 'nom'     , 'bite' , 'glomp'  , 'slap'    , 'kill', 'kick',
                 'happy'   , 'wink' , 'poke'   , 'dance'   , 'cringe'
 ]
-waifu_color = 0x007acc
 
 anime_color = 0x2e51a2
 manga_color = 0xebab37
