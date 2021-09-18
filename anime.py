@@ -16,8 +16,7 @@ class anime(commands.Cog):
         
         #memory for "MyAnimeList" search
         self.info = {}
-        self.characters = []
-        self.staffs = []
+        self.characters_staff = []
         self.voice_actors = []
         self.type = ''
         self.previous_command = ''
@@ -56,79 +55,90 @@ class anime(commands.Cog):
         except:
             return False
 
-    #get anime info from "MyAnimeList"
-    def search_anime(self, query):
-        #get anime id
+    #earch anime/manga info from "MyAnimeList"
+    def search(self, type, query):
         try:
-            url = f"https://api.jikan.moe/v3/search/anime?q={query}&limit=1"
-            response = requests.get(url, timeout=3)
-            json_data = json.loads(response.text)
-            info = json_data['results'][0]
-        
-            url = f"https://api.jikan.moe/v3/anime/{info['mal_id']}"
-            response = requests.get(url, timeout=3)
-            info = json.loads(response.text)
-        except:
-            return False
-
-        start = 'N/A' if not info['aired']['from'] else info['aired']['from'][:10]
-        end = "N/A" if not info['aired']['to'] else info['aired']['to'][:10]
-        synopsis = "N/A" if not info['synopsis'] else info['synopsis']
-        synopsis = (info['synopsis'][:600]+ '...') if len(info['synopsis']) > 600 else info['synopsis']
-        score = "N/A" if not info['score'] else info['score']
-        premiered = 'N/A' if not info['premiered'] else info['premiered']
-    
-        return {'id': info['mal_id'], 'url': info['url'], 'image': info['image_url'], 'trailer': info['trailer_url'],
-                'title': info['title'], 'type': info['type'], 'source': info['source'], 'start': start, 'end': end, 'score': score,
-                'synopsis': synopsis, 'season': premiered, 'studios': info['studios'], 'identify': 'anime'}
-
-    #get manga info from "MyAnimeList"
-    def search_manga(self, query):
-        try:
-            url = f"https://api.jikan.moe/v3/search/manga?q={query}&limit=1"
+            url = f"https://api.jikan.moe/v3/search/{type}?q={query}&limit=1"
             response = requests.get(url, timeout=3)
             json_data = json.loads(response.text)
             info = json_data['results'][0]
        
-            url = f"https://api.jikan.moe/v3/manga/{info['mal_id']}"
+            url = f"https://api.jikan.moe/v3/{type}/{info['mal_id']}"
             response = requests.get(url, timeout=3)
             info = json.loads(response.text)
         except:
             return False
 
-        start = "N/A" if not info['published']['from'] else info['published']['from'][:10]
-        end = "N/A" if not info['published']['to'] else info['published']['to'][:10]
+        
         synopsis = "N/A" if not info['synopsis'] else info['synopsis']
         synopsis = (info['synopsis'][:600]+ '...') if len(info['synopsis']) > 600 else info['synopsis']
         score = "N/A" if not info['score'] else info['score']
 
-        return {'id': info['mal_id'], 'url': info['url'], 'image': info['image_url'], 'title': info['title'], 'status': info['status'],
-                'score': score, 'start': start, 'end': end, 'synopsis': synopsis, 'type': info['type'], 'authors': info['authors'], 'identify': 'manga'}
+        if type == 'anime':
+            start = 'N/A' if not info['aired']['from'] else info['aired']['from'][:10]
+            end = "N/A" if not info['aired']['to'] else info['aired']['to'][:10]
+            premiered = 'N/A' if not info['premiered'] else info['premiered']
 
-    def get_anime_characters_info(self, arg):
+            return {'id': info['mal_id'], 'url': info['url'], 'image': info['image_url'], 'trailer': info['trailer_url'],
+                    'title': info['title'], 'type': info['type'], 'source': info['source'], 'start': start, 'end': end, 'score': score,
+                    'synopsis': synopsis, 'season': premiered, 'studios': info['studios'], 'identify': 'anime'}
+         
+        if type == 'manga':
+            start = "N/A" if not info['published']['from'] else info['published']['from'][:10]
+            end = "N/A" if not info['published']['to'] else info['published']['to'][:10]
+
+            return {'id': info['mal_id'], 'url': info['url'], 'image': info['image_url'], 'title': info['title'], 'status': info['status'],
+                    'score': score, 'start': start, 'end': end, 'synopsis': synopsis, 'type': info['type'], 'authors': info['authors'], 'identify': 'manga'}
+
+    def search_character(self, query):
+        try:
+            url = f"https://api.jikan.moe/v3/search/character?q={query}&limit=5"
+            response = requests.get(url, timeout=3)
+            json_data = json.loads(response.text)
+            info = json_data['results']
+        except:
+            return False
+
+        self.characters_staff = []
+        for i in range(0, len(info)):
+            self.characters_staff.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'], 'manga': info[i]['manga'],
+                                        'alter_name': info[i]['alternative_names'], 'name': info[i]['name'].replace(',', ''), 'anime': info[i]['anime']})
+
+    def get_characters_staff_info(self, type, arg):
         try:
             url = f"https://api.jikan.moe/v3/anime/{self.info['id']}/characters_staff"
             response = requests.get(url, timeout=3)
             json_data = json.loads(response.text)
-            info = json_data['characters']
+            info = json_data[type]
         except:
             return False
-        
-        self.characters = []
-        self.voice_actors = []
-        for i in range(0, len(info)):
-            voice_actor = []
-            for j in range(0, len(info[i]['voice_actors'])):
-                if info[i]['voice_actors'][j]['language'] == config.language:
-                    temp = self.process_voice_actor(info[i]['voice_actors'][j])
-                    voice_actor.append(temp)
 
-            if arg == '':
-                self.characters.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'], 
-                                        'name': info[i]['name'].replace(',', ''), 'role': info[i]['role'], 'voice': voice_actor})
-            elif info[i]['role'] == arg:
-                self.characters.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'], 
-                                        'name': info[i]['name'].replace(',', ''), 'role': info[i]['role'], 'voice': voice_actor})
+        self.characters_staff = []
+        if type == 'characters':
+            #process info about anime characters
+            self.voice_actors = []
+            for i in range(0, len(info)):
+                voice_actor = []
+                for j in range(0, len(info[i]['voice_actors'])):
+                    if info[i]['voice_actors'][j]['language'] == config.language:
+                        temp = self.process_voice_actor(info[i]['voice_actors'][j])
+                        voice_actor.append(temp)
+
+                if arg == '':
+                    self.characters_staff.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'], 
+                                                'name': info[i]['name'].replace(',', ''), 'role': info[i]['role'], 'voice': voice_actor})
+                elif info[i]['role'] == arg:
+                    self.characters_staff.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'], 
+                                                'name': info[i]['name'].replace(',', ''), 'role': info[i]['role'], 'voice': voice_actor})
+        else:
+            #process info about anime staff
+            for i in range(0, len(info)):
+                positions = []
+                for j in range(0, len(info[i]['positions'])):
+                    positions.append(info[i]['positions'][j])
+
+                self.characters_staff.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'],
+                                            'name': info[i]['name'].replace(',', ''), 'positions': positions})
     
     def get_manga_characters_info(self, arg):
         try:
@@ -139,32 +149,14 @@ class anime(commands.Cog):
         except:
             return False
             
-        self.characters = []
+        self.characters_staff = []
         for i in range(0, len(info)):
             if arg == '':
-                self.characters.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'],
+                self.characters_staff.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'],
                                         'name': info[i]['name'].replace(',', ''), 'role': info[i]['role']})
             elif info[i]['role'] == arg:
-                self.characters.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'],
+                self.characters_staff.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'],
                                         'name': info[i]['name'].replace(',', ''), 'role': info[i]['role']})
-
-    def get_anime_staffs_info(self):
-        try:
-            url = f"https://api.jikan.moe/v3/anime/{self.info['id']}/characters_staff"
-            response = requests.get(url, timeout=3)
-            json_data = json.loads(response.text)
-            info = json_data['staff']
-        except:
-            return False
-            
-        self.staffs = []
-        for i in range(0, len(info)):
-            positions = []
-            for j in range(0, len(info[i]['positions'])):
-                positions.append(info[i]['positions'][j])
-
-            self.staffs.append({'id': info[i]['mal_id'], 'url': info[i]['url'], 'image': info[i]['image_url'],
-                                'name': info[i]['name'].replace(',', ''), 'positions': positions})
 
     #send embed image
     async def embed_image(self, ctx, link, color):
@@ -216,6 +208,44 @@ class anime(commands.Cog):
         embedVar.set_author(name="MANGA")
         await ctx.send(embed=embedVar)
 
+    #send embed character info
+    async def embed_character(self, ctx, info):
+        if info['alter_name'] != []:
+            alternative_names = '**AKA:**'
+            for i in range(0, len(info['alter_name'])):
+                if len(alternative_names) <= 900:
+                    alternative_names += f" {info['alter_name'][i]} |"
+                else:
+                    break
+        else:
+            alternative_names = ''
+        
+        if info['anime'] != []:
+            animes = ''
+            for i in range(0, len(info['anime'])):
+                if len(animes) <= 900:
+                    animes += f"[{info['anime'][i]['name']}]({info['anime'][i]['url']})\n"
+                else:
+                    break
+        else:
+            animes = 'N/A'
+        
+        if info['manga'] != []:
+            mangas = ''
+            for i in range(0, len(info['manga'])):
+                if len(mangas) <= 900:
+                    mangas += f"[{info['manga'][i]['name']}]({info['manga'][i]['url']})\n"
+                else:
+                    break
+        else:
+            mangas = 'N/A'
+
+        embedVar = discord.Embed(title=info['name'], url=info['url'], description=alternative_names, color=config.anime_character_color)
+        embedVar.add_field(name="Anime:", value=animes)
+        embedVar.add_field(name="Manga:", value=mangas)
+        embedVar.set_thumbnail(url=info['image'])
+        await ctx.send(embed=embedVar)
+
     #send embed anime character info
     async def embed_anime_characters_info(self, ctx, info):
         voice_actors_name = ''
@@ -252,7 +282,7 @@ class anime(commands.Cog):
                 positions += f"{info['positions'][i]}\n"
         else:
             positions = 'N/A'
-        embedVar = discord.Embed(title=info['name'], url=info['url'], description=f"**ID:** {info['id']}", color=config.staff_color)
+        embedVar = discord.Embed(title=info['name'], url=info['url'], color=config.staff_color)
         embedVar.add_field(name="Position(s):", value=positions)
         embedVar.set_thumbnail(url=info['image'])
         await ctx.send(embed=embedVar)
@@ -296,7 +326,7 @@ class anime(commands.Cog):
         item = " ".join(items)
         await ctx.send(f"🔎 **Searching** `{item}`")
 
-        self.info = self.search_anime(item)
+        self.info = self.search('anime', item)
         if not self.info:
             await ctx.send('❌  **- Try again later** ↻')
         else:
@@ -308,7 +338,7 @@ class anime(commands.Cog):
         item = " ".join(items)
         await ctx.send(f"🔎 **Searching** `{item}`")
 
-        self.info = self.search_manga(item)
+        self.info = self.search('manga', item)
         if not self.info:
             await ctx.send('❌  **- Try again later** ↻')
         else:
@@ -317,35 +347,44 @@ class anime(commands.Cog):
     
     @commands.command(name='character', help='Search for characters in anime', aliases=['char'])
     async def character(self, ctx, *, arg=''):
+        #search character
+        if arg != 'main' and arg != 'support' and arg != '':
+            if self.search_character(arg) == False:
+                await ctx.send('❌  **- Try again later** ↻')
+                return
+            for i in range(0, len(self.characters_staff)):
+                await self.embed_character(ctx, self.characters_staff[i])
+            return
+
         if self.previous_command != 'manga' and self.previous_command != 'anime':
             await ctx.send(f"❌  **- Use** `{config.prefix}anime` **or** `{config.prefix}manga` **before this command**")
             return
-
+            
         arg = self.convert_arg(arg)
         max_characters = config.characters_number
         await ctx.send(f"🔎 **Searching**")
 
         if self.info['identify'] == 'manga':
-            #manga process
+            #search character in manga
             if self.get_manga_characters_info(arg) == False:
                 await ctx.send('❌  **- Try again later** ↻')
                 return
             else:
-                if len(self.characters) < max_characters:
-                    max_characters = len(self.characters)
+                if len(self.characters_staff) < max_characters:
+                    max_characters = len(self.characters_staff)
                 for i in range(0, max_characters):
-                    await self.embed_manga_characters_info(ctx, self.characters[i])
+                    await self.embed_manga_characters_info(ctx, self.characters_staff[i])
 
         else:
-            #anime process
-            if self.get_anime_characters_info(arg) == False:
+            #search character in anime
+            if self.get_characters_staff_info('characters', arg) == False:
                 await ctx.send('❌  **- Try again later** ↻')
                 return
             else:
-                if len(self.characters) < max_characters:
-                    max_characters = len(self.characters)
+                if len(self.characters_staff) < max_characters:
+                    max_characters = len(self.characters_staff)
                 for i in range(0, max_characters):
-                    await self.embed_anime_characters_info(ctx, self.characters[i])
+                    await self.embed_anime_characters_info(ctx, self.characters_staff[i])
 
     @commands.command(name='staff', help="Search for anime's staff", aliases=['stf'])
     async def staff(self, ctx):
@@ -356,14 +395,14 @@ class anime(commands.Cog):
         max_characters = config.characters_number
         await ctx.send(f"🔎 **Searching**")
 
-        if self.get_anime_staffs_info() == False:
+        if self.get_characters_staff_info('staff', '') == False:
             await ctx.send('❌  **- Try again later** ↻')
             return
         else:
-            if len(self.staffs) < max_characters:
-                max_characters = len(self.staffs)
+            if len(self.characters_staff) < max_characters:
+                max_characters = len(self.characters_staff)
             for i in range(0, max_characters):
-                await self.embed_anime_staff_info(ctx, self.staffs[i])
+                await self.embed_anime_staff_info(ctx, self.characters_staff[i])
 
     @commands.command(name='seiyuu', help="Search for anime's seiyuu", aliases=['sei'])
     async def seiyuu(self, ctx, *, arg=''):
@@ -375,21 +414,22 @@ class anime(commands.Cog):
         max_characters = config.characters_number
         await ctx.send(f"🔎 **Searching**")
 
-        if self.get_anime_characters_info(arg) == False:
+        
+        if self.get_characters_staff_info('characters', arg) == False:
             await ctx.send('❌  **- Try again later** ↻')
             return
 
         else:
-            if len(self.characters) < max_characters:
-                max_characters = len(self.characters)
+            if len(self.characters_staff) < max_characters:
+                max_characters = len(self.characters_staff)
             
             for i in range(0, max_characters):
-                for j in range(0, len(self.characters[i]['voice'])):
-                    temp = self.characters[i]['voice'][j]
-                    temp['character'] = self.characters[i]['name']
-                    temp['character_url'] = self.characters[i]['url']
-                    temp['character_id'] = self.characters[i]['id']
-                    temp['role'] = self.characters[i]['role']
+                for j in range(0, len(self.characters_staff[i]['voice'])):
+                    temp = self.characters_staff[i]['voice'][j]
+                    temp['character'] = self.characters_staff[i]['name']
+                    temp['character_url'] = self.characters_staff[i]['url']
+                    temp['character_id'] = self.characters_staff[i]['id']
+                    temp['role'] = self.characters_staff[i]['role']
                     await self.embed_seiyuu_info(ctx, temp)
 
 def setup(bot):
