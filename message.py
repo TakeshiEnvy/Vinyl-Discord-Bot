@@ -1,7 +1,10 @@
 import discord
 from discord.ext import commands
+import qrcode
 import requests
 import json
+
+import config
 
 class message(commands.Cog):
     def __init__(self, bot):
@@ -52,6 +55,27 @@ class message(commands.Cog):
     async def image(self, ctx):
         #await ctx.send("D:\Code\Vinyl-Discord-Bot\data\emotes\AquaBaka.png")
         await ctx.send(file=discord.File('./data/emotes/AquaBaka.png'))
+    
+    @commands.command(name="qrcode", help="Create qr code", aliases=['qr'])
+    async def qrcode(self, ctx, *items):
+        item = ' '.join(items)
+        cfg = config.qrcode
+        qr = qrcode.QRCode(
+            version = cfg['version'],
+            error_correction = qrcode.constants.ERROR_CORRECT_M,
+            box_size = cfg['box_size'],
+            border = cfg['border']
+        )
+        qr.add_data(item)
+        qr.make(fit=True)
+        img = qr.make_image(
+            fill_color = cfg['qr_foreground'],
+            back_color = cfg['qr_background']
+        )
+
+        with open('data/qrcode.png', 'wb') as file:
+            img.save(file)
+        await ctx.send(file=discord.File('data/qrcode.png'))
 
 def setup(bot):
     bot.add_cog(message(bot))
