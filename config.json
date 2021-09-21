@@ -1,0 +1,103 @@
+{
+    "MAIN": {
+        "prefix": "?"
+    },
+    "ANIME": {
+        "hentai_categories": [
+            "waifu",
+            "neko",
+            "trap",
+            "blowjob"
+        ],
+        "waifu_categories": [
+            "waifu",
+            "neko",
+            "shinobu",
+            "megumin",
+            "bully",
+            "cuddle",
+            "cry",
+            "hug",
+            "awoo",
+            "kiss",
+            "lick",
+            "pat",
+            "smug",
+            "bonk",
+            "yeet",
+            "blush",
+            "smile",
+            "wave",
+            "highfive",
+            "handhold",
+            "nom",
+            "bite",
+            "glomp",
+            "slap",
+            "kill",
+            "kick",
+            "happy",
+            "wink",
+            "poke",
+            "dance",
+            "cringe"
+        ],
+        "background_lewd": {
+            "channel": 865991044821418015,
+            "time": "9:00"
+        },
+        "anime_color": "0x2e51a2",
+        "manga_color": "0xebab37",
+        "anime_character_color": "0x2e51a2",
+        "seiyuu_color": "0x2e51a2",
+        "staff_color": "0x2e51a2",
+        "manga_character_color": "0xebab37",
+        "waifu_color": "0x007acc",
+        "hentai_color": "0xd59de0",
+        "language": "Japanese",
+        "characters_number": 10,
+        "timeout": 5,
+        "mal_timeout": 3
+    },
+    "MESSAGE": {
+        "qrcode": {
+            "version": 1,
+            "box_size": 10,
+            "border": 3,
+            "qr_background": [
+                88,
+                101,
+                242
+            ],
+            "qr_foreground": [
+                255,
+                255,
+                255
+            ]
+        }
+    },
+    "MUSIC": {
+        "FFMPEG_OPTIONS": {
+            "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+            "options": "-vn"
+        },
+        "YDL_OPTIONS": {
+            "format": "bestaudio[ext=m4a]",
+            "noplaylist": true,
+            "cookiefile": "data/cookies.txt"
+        },
+        "playing_music": {
+            "color": "0xff0000",
+            "header": "🎵 Playing:",
+            "info3": "Songs in queue:"
+        },
+        "queued_music": {
+            "color": "0xe67e22",
+            "header": "▷ Queue:",
+            "info3": "Position in queue:"
+        },
+        "queue_color": "0x83f8c9",
+        "disconnect_time": 900,
+        "max_songs_in_queue": 10
+    }
+}
