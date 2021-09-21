@@ -42,10 +42,7 @@
             "dance",
             "cringe"
         ],
-        "background_lewd": {
-            "channel": 865991044821418015,
-            "time": "9:00"
-        },
+        "background_lewd": {},
         "anime_color": "0x2e51a2",
         "manga_color": "0xebab37",
         "anime_character_color": "0x2e51a2",
