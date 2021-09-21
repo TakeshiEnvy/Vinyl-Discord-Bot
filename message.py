@@ -4,16 +4,18 @@ import qrcode
 import requests
 import json
 
-import config
-
-class message(commands.Cog):
+class Message(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        with open("config.json", 'r') as file:
+            data = json.load(file)
+            file.close()
+        self.cfg = data['MESSAGE']
 
     #get inspired quote from "zenquotes"
     def zenquotes(self):
         try:
-            response = requests.get("https://zenquotes.io/api/random", timeout=3)
+            response = requests.get("https://zenquotes.io/api/random", timeout=self.cfg['timeout'])
             json_data = json.loads(response.text)
             quote = f"'*{json_data[0]['q']}*'\n> **{json_data[0]['a']}**"
             return quote
@@ -23,7 +25,7 @@ class message(commands.Cog):
     #get insult from "Evil Insult"
     def evilinsult(self):
         try:
-            response = requests.get("https://evilinsult.com/generate_insult.php?lang=en&type=json", timeout=3)
+            response = requests.get("https://evilinsult.com/generate_insult.php?lang=en&type=json", timeout=self.cfg['timeout'])
             json_data = json.loads(response.text)
             return json_data['insult']
         except:
@@ -59,7 +61,7 @@ class message(commands.Cog):
     @commands.command(name="qrcode", help="Create qr code", aliases=['qr'])
     async def qrcode(self, ctx, *items):
         item = ' '.join(items)
-        cfg = config.qrcode
+        cfg = self.cfg['qrcode']
         qr = qrcode.QRCode(
             version = cfg['version'],
             error_correction = qrcode.constants.ERROR_CORRECT_M,
@@ -69,13 +71,10 @@ class message(commands.Cog):
         qr.add_data(item)
         qr.make(fit=True)
         img = qr.make_image(
-            fill_color = cfg['qr_foreground'],
-            back_color = cfg['qr_background']
+            fill_color = tuple(cfg['qr_foreground']),
+            back_color = tuple(cfg['qr_background'])
         )
 
         with open('data/qrcode.png', 'wb') as file:
             img.save(file)
         await ctx.send(file=discord.File('data/qrcode.png'))
-
-def setup(bot):
-    bot.add_cog(message(bot))
