@@ -1,19 +1,20 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
+from hentai import Hentai, Format, Tag
+from datetime import datetime
 import requests
-import json
-import random
+import random, json
 
-import config
-
-#categories uses to request from "waifu.pics" api
-hentai_categories = config.hentai_categories
-waifu_categories = config.waifu_categories
-
-class anime(commands.Cog):
+class Anime(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        
+        with open("config.json", 'r') as file:
+            data = json.load(file)
+            file.close()
+        self.cfg = data['ANIME']
+
+        self.background_lewd.start()
+
         #memory for "MyAnimeList" search
         self.info = {}
         self.characters_staff = []
@@ -38,9 +39,9 @@ class anime(commands.Cog):
     def get_waifu_pics(self, type, category):
         try:
             url = f'https://waifu.pics/api/{type}/{category}'
-            response = requests.get(url, timeout=3)
+            response = requests.get(url, timeout=self.cfg['timeout'])
             json_data = json.loads(response.text)
-            return json_data
+            return json_data['url']
         except:
             return False
 
@@ -48,7 +49,7 @@ class anime(commands.Cog):
     def get_anime_quote(self):
         try:
             url = f'https://animechan.vercel.app/api/random'
-            response = requests.get(url, timeout=3)
+            response = requests.get(url, timeout=self.cfg['timeout'])
             json_data = json.loads(response.text)
             quote = f"*'{json_data['quote']}'*\n> **{json_data['character']}** - `{json_data['anime']}`"
             return quote
@@ -59,12 +60,12 @@ class anime(commands.Cog):
     def search(self, type, query):
         try:
             url = f"https://api.jikan.moe/v3/search/{type}?q={query}&limit=1"
-            response = requests.get(url, timeout=3)
+            response = requests.get(url, timeout=self.cfg['mal_timeout'])
             json_data = json.loads(response.text)
             info = json_data['results'][0]
        
             url = f"https://api.jikan.moe/v3/{type}/{info['mal_id']}"
-            response = requests.get(url, timeout=3)
+            response = requests.get(url, timeout=self.cfg['mal_timeout'])
             info = json.loads(response.text)
         except:
             return False
@@ -93,7 +94,7 @@ class anime(commands.Cog):
     def search_character(self, query):
         try:
             url = f"https://api.jikan.moe/v3/search/character?q={query}&limit=5"
-            response = requests.get(url, timeout=3)
+            response = requests.get(url, timeout=self.cfg['mal_timeout'])
             json_data = json.loads(response.text)
             info = json_data['results']
         except:
@@ -107,7 +108,7 @@ class anime(commands.Cog):
     def get_characters_staff_info(self, type, arg):
         try:
             url = f"https://api.jikan.moe/v3/anime/{self.info['id']}/characters_staff"
-            response = requests.get(url, timeout=3)
+            response = requests.get(url, timeout=self.cfg['mal_timeout'])
             json_data = json.loads(response.text)
             info = json_data[type]
         except:
@@ -120,7 +121,7 @@ class anime(commands.Cog):
             for i in range(0, len(info)):
                 voice_actor = []
                 for j in range(0, len(info[i]['voice_actors'])):
-                    if info[i]['voice_actors'][j]['language'] == config.language:
+                    if info[i]['voice_actors'][j]['language'] == self.cfg['language']:
                         temp = self.process_voice_actor(info[i]['voice_actors'][j])
                         voice_actor.append(temp)
 
@@ -143,7 +144,7 @@ class anime(commands.Cog):
     def get_manga_characters_info(self, arg):
         try:
             url = f"https://api.jikan.moe/v3/manga/{self.info['id']}/characters"
-            response = requests.get(url, timeout=3)
+            response = requests.get(url, timeout=self.cfg['mal_timeout'])
             json_data = json.loads(response.text)
             info = json_data['characters']
         except:
@@ -159,10 +160,10 @@ class anime(commands.Cog):
                                         'name': info[i]['name'].replace(',', ''), 'role': info[i]['role']})
 
     #send embed image
-    async def embed_image(self, ctx, link, color):
+    async def embed_image(self, message_channel, link, color):
         embedVar = discord.Embed(color=color)
         embedVar.set_image(url=link)
-        await ctx.send(embed=embedVar)
+        await message_channel.send(embed=embedVar)
 
     #send embed anime info
     async def embed_anime_info(self, ctx, info):
@@ -172,7 +173,7 @@ class anime(commands.Cog):
                 studios += f"[{info['studios'][i]['name']}]({info['studios'][i]['url']})\n"
         else:
             studios = 'N/A'
-        embedVar = discord.Embed(title=f"**{info['title']}**", url=info['url'], description=f"**Type:** {info['type']}", color=config.anime_color)
+        embedVar = discord.Embed(title=f"**{info['title']}**", url=info['url'], description=f"**Type:** {info['type']}", color=int(self.cfg['anime_color'], 16))
         embedVar.add_field(name="⭐ Score:", value=info['score'])
         embedVar.add_field(name="Source:", value=info['source'])
         embedVar.add_field(name="Studio(s):", value=studios)
@@ -197,7 +198,7 @@ class anime(commands.Cog):
                 authors += f"[{info['authors'][i]['name'].replace(',', '')}]({info['authors'][i]['url']})\n"
         else:
             authors = 'N/A'
-        embedVar = discord.Embed(title=f"**{info['title']}**", url=info['url'], description=f"**Type:** {info['type']}", color=config.manga_color)
+        embedVar = discord.Embed(title=f"**{info['title']}**", url=info['url'], description=f"**Type:** {info['type']}", color=int(self.cfg['manga_color'], 16))
         embedVar.add_field(name="⭐ Score:", value=info['score'])
         embedVar.add_field(name="Author(s):", value=authors)
         embedVar.add_field(name="Status:", value=info['status'])
@@ -240,7 +241,7 @@ class anime(commands.Cog):
         else:
             mangas = 'N/A'
 
-        embedVar = discord.Embed(title=info['name'], url=info['url'], description=alternative_names, color=config.anime_character_color)
+        embedVar = discord.Embed(title=info['name'], url=info['url'], description=alternative_names, color=int(self.cfg['anime_character_color'], 16))
         embedVar.add_field(name="Anime:", value=animes)
         embedVar.add_field(name="Manga:", value=mangas)
         embedVar.set_thumbnail(url=info['image'])
@@ -254,7 +255,7 @@ class anime(commands.Cog):
                 voice_actors_name += f"[{info['voice'][i]['name']}]({info['voice'][i]['url']})\n"
         else:
             voice_actors_name = 'N/A'
-        embedVar = discord.Embed(title=info['name'], url=info['url'], color=config.anime_character_color)
+        embedVar = discord.Embed(title=info['name'], url=info['url'], color=int(self.cfg['anime_character_color'], 16))
         embedVar.add_field(name="Seiyuu:", value=voice_actors_name)
         embedVar.add_field(name="Role:", value=info['role'])
         embedVar.set_thumbnail(url=info['image'])
@@ -262,14 +263,14 @@ class anime(commands.Cog):
 
     #send embed manga character info
     async def embed_manga_characters_info(self, ctx, info):
-        embedVar = discord.Embed(title=info['name'], url=info['url'], description=f"**Role:** {info['role']}", color=config.manga_character_color)
+        embedVar = discord.Embed(title=info['name'], url=info['url'], description=f"**Role:** {info['role']}", color=int(self.cfg['manga_character_color'], 16))
         embedVar.set_thumbnail(url=info['image'])
         await ctx.send(embed=embedVar)
         
     #send embed seiyuu info
     async def embed_seiyuu_info(self, ctx, info):
-        embedVar = discord.Embed(title=info['name'], url=info['url'], color=config.seiyuu_color)
-        embedVar.add_field(name="Voiced:", value=f"[{info['character']}]({info['character_url']})")
+        embedVar = discord.Embed(title=info['name'], url=info['url'], color=int(self.cfg['seiyuu_color'], 16))
+        embedVar.add_field(name="Voice:", value=f"[{info['character']}]({info['character_url']})")
         embedVar.add_field(name="Role:", value=info['role'])
         embedVar.set_thumbnail(url=info['image'])
         await ctx.send(embed=embedVar)
@@ -282,7 +283,7 @@ class anime(commands.Cog):
                 positions += f"{info['positions'][i]}\n"
         else:
             positions = 'N/A'
-        embedVar = discord.Embed(title=info['name'], url=info['url'], color=config.staff_color)
+        embedVar = discord.Embed(title=info['name'], url=info['url'], color=int(self.cfg['staff_color'], 16))
         embedVar.add_field(name="Position(s):", value=positions)
         embedVar.set_thumbnail(url=info['image'])
         await ctx.send(embed=embedVar)
@@ -291,27 +292,31 @@ class anime(commands.Cog):
 
     @commands.command(name='lewd', help='Send random NSFW waifu pic or gif')
     async def lewd(self, ctx, *, arg=''):
-        if arg in hentai_categories:
+        if arg in self.cfg['hentai_categories']:
             link = self.get_waifu_pics('nsfw', arg)
         else:
-            link = self.get_waifu_pics('nsfw', random.choice(hentai_categories))
+            link = self.get_waifu_pics('nsfw', random.choice(self.cfg['hentai_categories']))
 
         if not link:
             await ctx.send("❌  **- Error**")
         else:
-            await self.embed_image(ctx, link, config.hentai_color)
+            channel_id = ctx.channel.id
+            message_channel = self.bot.get_channel(channel_id)
+            await self.embed_image(message_channel, link, int(self.cfg['hentai_color'], 16))
 
     @commands.command(name='waifu', help='Send random SFW waifu pic or gif')
     async def waifu(self, ctx, *, arg=''):
-        if arg in waifu_categories:
+        if arg in self.cfg['waifu_categories']:
             link = self.get_waifu_pics('sfw', arg)
         else:
-            link = self.get_waifu_pics('sfw', random.choice(waifu_categories))
+            link = self.get_waifu_pics('sfw', random.choice(self.cfg['waifu_categories']))
 
         if not link:
             await ctx.send("❌  **- Error**")
         else:
-            await self.embed_image(ctx, link, config.waifu_color)
+            channel_id = ctx.channel.id
+            message_channel = self.bot.get_channel(channel_id)
+            await self.embed_image(message_channel, link, int(self.cfg['waifu_color'], 16))
     
     @commands.command(name='aniquote', help='Send random anime quote', aliases=['aquote', 'aq'])
     async def aniquote(self, ctx):
@@ -321,7 +326,7 @@ class anime(commands.Cog):
         else:
             await ctx.send(quote)
 
-    @commands.command(name='anime', help='Search for anime', aliases=['a'])
+    @commands.command(name='anime', help='Search for anime', aliases=['a', 'ani'])
     async def anime(self, ctx, *items):
         item = " ".join(items)
         await ctx.send(f"🔎 **Searching** `{item}`")
@@ -357,11 +362,11 @@ class anime(commands.Cog):
             return
 
         if self.previous_command != 'manga' and self.previous_command != 'anime':
-            await ctx.send(f"❌  **- Use** `{config.prefix}anime` **or** `{config.prefix}manga` **before this command**")
+            await ctx.send(f"❌  **- Use** `anime` **or** `manga` **before this command.**")
             return
             
         arg = self.convert_arg(arg)
-        max_characters = config.characters_number
+        max_characters = self.cfg['characters_number']
         await ctx.send(f"🔎 **Searching**")
 
         if self.info['identify'] == 'manga':
@@ -389,10 +394,10 @@ class anime(commands.Cog):
     @commands.command(name='staff', help="Search for anime's staff", aliases=['stf'])
     async def staff(self, ctx):
         if self.previous_command != 'anime':
-            await ctx.send(f"❌  **- Use** `{config.prefix}anime` **before this command**")
+            await ctx.send(f"❌  **- Use** `anime` **before this command.**")
             return
 
-        max_characters = config.characters_number
+        max_characters = self.cfg['characters_number']
         await ctx.send(f"🔎 **Searching**")
 
         if self.get_characters_staff_info('staff', '') == False:
@@ -407,11 +412,11 @@ class anime(commands.Cog):
     @commands.command(name='seiyuu', help="Search for anime's seiyuu", aliases=['sei'])
     async def seiyuu(self, ctx, *, arg=''):
         if self.previous_command != 'anime':
-            await ctx.send(f"❌  **- Use** `{config.prefix}anime` **before this command**")
+            await ctx.send(f"❌  **- Use** `anime` **before this command**")
             return
 
         arg = self.convert_arg(arg)
-        max_characters = config.characters_number
+        max_characters = self.cfg['characters_number']
         await ctx.send(f"🔎 **Searching**")
 
         
@@ -432,5 +437,93 @@ class anime(commands.Cog):
                     temp['role'] = self.characters_staff[i]['role']
                     await self.embed_seiyuu_info(ctx, temp)
 
-def setup(bot):
-    bot.add_cog(anime(bot))
+    @commands.command(name='nhentai', help="Search 'cultured' manga on 'nhentai'", aliases=['ntai'])
+    async def nhentai(self, ctx, *items):
+        item = ' '.join(items)
+        if item.isdigit:
+            if not Hentai.exists(item):
+                await ctx.send(f"❌ `{item}` **does not exist.**")
+                return
+
+            doujin = Hentai(item)
+            tags = ''
+            for tag in doujin.tag:
+                tags += f"`{tag.name}`  "
+
+            relateds = ''
+            for related in doujin.related:
+                if len(relateds) <= 900:
+                    relateds += f"[`{related.id}`]({related.url})  "
+                else:
+                    break
+
+            characters = ''
+            for character in doujin.character:
+                characters += f"[`{character.name.title()}`]({character.url})  "
+            
+            languages = ''
+            for language in doujin.language:
+                languages += f"{language.name.capitalize()} "
+
+            embedVar = discord.Embed(title=doujin.title(Format.Pretty), url=f"https://nhentai.net/g/{item}", description=f"**ID:** {item}", color=0xec2854)
+            embedVar.add_field(name="Artist:", value=f"[{Tag.get(doujin.artist, property_='name').title()}]({Tag.get(doujin.artist, property_='url')})")
+            if doujin.parody != []:
+                embedVar.add_field(name="Parody:", value=f"[{Tag.get(doujin.parody, property_='name').title()}]({Tag.get(doujin.parody, property_='url')})")
+            embedVar.add_field(name="Language:", value=languages)
+            if doujin.character != []:
+                embedVar.add_field(name="Characters:", value=characters, inline=False)
+            if doujin.tag != []:
+                embedVar.add_field(name="Tags:", value=tags, inline=False)
+            if doujin.related != []:
+                embedVar.add_field(name="Related:", value=relateds, inline=False)
+            embedVar.set_thumbnail(url=doujin.cover)
+            await ctx.send(embed=embedVar)
+    
+    @commands.command(name='set_lewd', help='Set message channel to send lewd.')
+    async def set_lewd(self, ctx, time):
+        background_lewd = {
+            'channel': ctx.channel.id,
+            'time': time
+        }
+        with open("config.json", 'r') as file:
+            data = json.load(file)
+            file.close()
+
+        data['ANIME']['background_lewd'] = background_lewd.copy()
+        self.cfg['background_lewd'] = background_lewd.copy()
+
+        with open("config.json", 'w') as file:
+            json.dump(data, file, ensure_ascii=False, indent=4)
+            file.close()
+        await ctx.send("✅ **Done!**")
+
+    @commands.command(name='set_lewd_off', help='Turn off lewd channel.')
+    async def set_lewd_off(self, ctx):
+        with open("config.json", 'r') as file:
+            data = json.load(file)
+            file.close()
+
+        data['ANIME']['background_lewd'] = {}
+        self.cfg['background_lewd'] = {}
+
+        with open("config.json", 'w') as file:
+            json.dump(data, file, ensure_ascii=False, indent=4)
+            file.close()
+        await ctx.send("📴 **Turned off lewd channel.**")
+
+    @tasks.loop(seconds=60)
+    async def background_lewd(self):
+        if self.cfg['background_lewd'] != {}:
+            now = datetime.now()
+            current_time = now.strftime("%H:%M")
+            time = self.cfg['background_lewd']['time']
+
+            if current_time == time:
+                link = self.get_waifu_pics('nsfw', random.choice(self.cfg['hentai_categories']))
+                channel_id = self.cfg['background_lewd']['channel']
+                message_channel = self.bot.get_channel(channel_id)
+                await self.embed_image(message_channel, link, int(self.cfg['hentai_color'], 16))
+
+    @background_lewd.before_loop
+    async def check(self):
+        await self.bot.wait_until_ready()
